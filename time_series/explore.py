@@ -5,6 +5,9 @@
 
 import pandas as pd
 import numpy as np
+import datetime
+from matplotlib import pyplot as plt
+import statsmodels.api as sm
 
 def summarize(i_file):
 
@@ -15,9 +18,31 @@ def summarize(i_file):
     ### 欠損値の確認 ###
     print(df.isnull().sum(axis=0))
 
+    df['日付け'] = pd.to_datetime(df['日付け'])
+    df['ym_dt'] = list(map(lambda dt: datetime.date(dt.year, dt.month, 1), df['日付け']))
+    ym_df = df.groupby('ym_dt').mean()
+    print(ym_df)
+    show_trend_season(ym_df['始値'])
+
     print(df)
     print(df.dtypes)
     print(df.describe())
+
+
+def show_trend_season(ser):
+
+    def plot_aux(i, ind, val, title):
+
+        plt.subplot(4,1,i)
+        plt.plot(ind, val)
+        plt.ylabel(title)
+
+    plt.figure(figsize=(8,5))
+    ser.index = pd.to_datetime(ser.index)
+    print(ser)
+    res = sm.tsa.seasonal_decompose(ser)
+    plot_aux(1, ser.index, ser.values, 'ORIGINAL')
+    plt.show()
 
 
 def convert_to_float(df):
@@ -27,7 +52,6 @@ def convert_to_float(df):
     print('vol', vol)
     print('vol', type(vol))
     df['出来高'] = vol
-    #df['volume_nr'] = vol
 
     ### 変化率 ###
     change = np.array(list(map(percent2value, df['変化率 %'])))
