@@ -8,6 +8,7 @@ import numpy as np
 import datetime
 from matplotlib import pyplot as plt
 import statsmodels.api as sm
+import os
 
 def summarize(i_file):
 
@@ -22,14 +23,20 @@ def summarize(i_file):
     df['ym_dt'] = list(map(lambda dt: datetime.date(dt.year, dt.month, 1), df['日付け']))
     ym_df = df.groupby('ym_dt').mean()
     print(ym_df)
-    show_trend_season(ym_df['始値'])
+    o_dir = 'fig'
+    if not os.path.isdir(o_dir):
+        os.mkdir(o_dir)
+    for col in ['始値', '終値', '安値', '高値']: 
+        o_file = '%s/decompose-%s.png' % (o_dir, col)
+        print('OUTPUT', o_file)
+        show_trend_season(ym_df[col], o_file)
 
     print(df)
     print(df.dtypes)
     print(df.describe())
 
 
-def show_trend_season(ser):
+def show_trend_season(ser, o_file):
 
     def plot_aux(i, ind, val, title):
 
@@ -48,7 +55,8 @@ def show_trend_season(ser):
     plot_aux(3, ser.index, res.seasonal,'SEASONALITY')
     plot_aux(4, ser.index, res.resid,   'RESIDUAL')
     plt.subplots_adjust(hspace=1.0)
-    plt.show()
+    plt.savefig(o_file)
+    #plt.show()
 
 
 def convert_to_float(df):
