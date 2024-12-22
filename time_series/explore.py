@@ -19,10 +19,13 @@ def summarize(i_file):
     ### 欠損値の確認 ###
     print(df.isnull().sum(axis=0))
 
+    ### 月別データに変換 ###
     df['日付け'] = pd.to_datetime(df['日付け'])
     df['ym_dt'] = list(map(lambda dt: datetime.date(dt.year, dt.month, 1), df['日付け']))
     ym_df = df.groupby('ym_dt').mean()
     print(ym_df)
+
+    ### トレンド、季節性の確認 ###
     o_dir = 'fig'
     if not os.path.isdir(o_dir):
         os.mkdir(o_dir)
@@ -31,9 +34,11 @@ def summarize(i_file):
         print('OUTPUT', o_file)
         show_trend_season(ym_df[col], o_file)
 
-    print(df)
-    print(df.dtypes)
-    print(df.describe())
+    ### 自己相関係数の確認 ###
+    show_acf(ym_df['終値'])
+
+    #print(df)
+    #print(df.describe())
 
 
 def show_trend_season(ser, o_file):
@@ -48,7 +53,6 @@ def show_trend_season(ser, o_file):
     plt.figure(figsize=(8,5))
     ser.index = pd.to_datetime(ser.index)
     min_dt, max_dt = min(ser.index), max(ser.index)
-    print(ser)
     res = sm.tsa.seasonal_decompose(ser)
     plot_aux(1, ser.index, ser.values,  'ORIGINAL')
     plot_aux(2, ser.index, res.trend,   'TREND')
@@ -56,7 +60,16 @@ def show_trend_season(ser, o_file):
     plot_aux(4, ser.index, res.resid,   'RESIDUAL')
     plt.subplots_adjust(hspace=1.0)
     plt.savefig(o_file)
-    #plt.show()
+    plt.close()
+
+
+def show_acf(ser):
+
+    #end_acf = sm.tsa.stattools.acf(ser, nlags=40)
+    fig = plt.figure(figsize=(12,4))
+    ax1 = fig.add_subplot(111)
+    sm.graphics.tsa.plot_acf(ser, lags=40, ax=ax1)
+    plt.show()
 
 
 def convert_to_float(df):
