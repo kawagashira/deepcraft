@@ -36,12 +36,18 @@ def show_trend_season(ser):
         plt.subplot(4,1,i)
         plt.plot(ind, val)
         plt.ylabel(title)
+        plt.xlim(min_dt, max_dt)
 
     plt.figure(figsize=(8,5))
     ser.index = pd.to_datetime(ser.index)
+    min_dt, max_dt = min(ser.index), max(ser.index)
     print(ser)
     res = sm.tsa.seasonal_decompose(ser)
-    plot_aux(1, ser.index, ser.values, 'ORIGINAL')
+    plot_aux(1, ser.index, ser.values,  'ORIGINAL')
+    plot_aux(2, ser.index, res.trend,   'TREND')
+    plot_aux(3, ser.index, res.seasonal,'SEASONALITY')
+    plot_aux(4, ser.index, res.resid,   'RESIDUAL')
+    plt.subplots_adjust(hspace=1.0)
     plt.show()
 
 
