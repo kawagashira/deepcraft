@@ -35,7 +35,23 @@ def summarize(i_file):
         show_trend_season(ym_df[col], o_file)
 
     ### 自己相関係数の確認 ###
-    show_acf(ym_df['終値'])
+    o_file = '%s/acf-終値.png' % o_dir
+    print('ACF', o_file)
+    show_acf(ym_df['終値'], o_file)
+
+    ### 階差系列 ###
+    ym_diff = (ym_df - ym_df.shift()).dropna()
+    print(ym_diff)
+    o_file = '%s/diff-asf-終値.png' % o_dir
+    show_trend_season(ym_diff['終値'], o_file)
+
+    ### 階差系列12 ##
+    ym_diff12 = (ym_df - ym_df.shift(12)).dropna()
+    o_file = '%s/diff12-asf-終値.png' % o_dir
+    show_trend_season(ym_diff12['終値'], o_file)
+
+    ### 原系列と階差系列の比較表示 ###
+    show_org_diff(ym_df['安値'], ym_diff['安値'])
 
     #print(df)
     #print(df.describe())
@@ -63,12 +79,29 @@ def show_trend_season(ser, o_file):
     plt.close()
 
 
-def show_acf(ser):
+def show_acf(ser, o_file):
 
     #end_acf = sm.tsa.stattools.acf(ser, nlags=40)
     fig = plt.figure(figsize=(12,4))
     ax1 = fig.add_subplot(111)
     sm.graphics.tsa.plot_acf(ser, lags=40, ax=ax1)
+    plt.savefig(o_file)
+    plt.close()
+    #plt.show()
+    return
+
+
+def show_org_diff(org_ser, diff_ser):
+
+    plt.figure(figsize=(8,5))
+    org_ser.index = pd.to_datetime(org_ser.index)
+    min_dt, max_dt = min(org_ser.index), max(org_ser.index)
+    plt.subplot(2,1,1)
+    plt.plot(org_ser.index, org_ser.values)
+    plt.ylabel('ORIGINAL')
+    plt.subplot(2,1,2)
+    plt.plot(diff_ser.index, diff_ser.values)
+    plt.ylabel('DIFFERENCE')
     plt.show()
 
 
