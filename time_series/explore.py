@@ -9,24 +9,35 @@ import datetime
 from matplotlib import pyplot as plt
 import statsmodels.api as sm
 import os
+import pickle
 
-def summarize(i_file):
+def main(i_file):
 
+    o_dir = 'fig'
     df = pd.read_csv(i_file)
+
     ### 出来高、変化率をFloatに変換 ###
     df = convert_to_float(df)
 
     ### 欠損値の確認 ###
     print(df.isnull().sum(axis=0))
 
+    ### 頻度分布の確認 ###
+    col = '安値'
+    h_file = '%s/hist-%s.png' % (o_dir, col)
+    show_hist(df[col], h_file)
+
     ### 月別データに変換 ###
     df['日付け'] = pd.to_datetime(df['日付け'])
     df['ym_dt'] = list(map(lambda dt: datetime.date(dt.year, dt.month, 1), df['日付け']))
     ym_df = df.groupby('ym_dt').mean()
     print(ym_df)
+    ym_file = 'year_month.pkl'
+    print('YEAR-MONTH DATA', ym_file)
+    with open(ym_file, 'wb') as ym_handle:
+        pickle.dump(ym_df, ym_handle)
 
     ### トレンド、季節性の確認 ###
-    o_dir = 'fig'
     if not os.path.isdir(o_dir):
         os.mkdir(o_dir)
     for col in ['始値', '終値', '安値', '高値']: 
@@ -34,27 +45,54 @@ def summarize(i_file):
         print('OUTPUT', o_file)
         show_trend_season(ym_df[col], o_file)
 
+    col = '安値'
     ### 自己相関係数の確認 ###
-    o_file = '%s/acf-終値.png' % o_dir
+    o_file = '%s/acf-%s.png' % (o_dir, col)
     print('ACF', o_file)
-    show_acf(ym_df['終値'], o_file)
+    show_acf(ym_df[col], o_file)
 
     ### 階差系列 ###
     ym_diff = (ym_df - ym_df.shift()).dropna()
     print(ym_diff)
-    o_file = '%s/diff-asf-終値.png' % o_dir
-    show_trend_season(ym_diff['終値'], o_file)
+    ym_diff_file = 'year_month_diff.pkl'
+    with open(ym_diff_file, 'wb') as d_handle:
+        pickle.dump(ym_diff, d_handle)
+    o_file = '%s/diff-decomp-%s.png' % (o_dir, col)
+    show_trend_season(ym_diff[col], o_file)
 
-    ### 階差系列12 ##
+    ### 12ずらした階差系列 ##
     ym_diff12 = (ym_df - ym_df.shift(12)).dropna()
-    o_file = '%s/diff12-asf-終値.png' % o_dir
-    show_trend_season(ym_diff12['終値'], o_file)
+    o_file = '%s/diff12-asf-%s.png' % (o_dir, col)
+    show_trend_season(ym_diff12[col], o_file)
 
     ### 原系列と階差系列の比較表示 ###
-    show_org_diff(ym_df['安値'], ym_diff['安値'])
+    o_file = '%s/comp-org-diff-%s.png' % (o_dir, col)
+    show_org_diff(ym_df[col], ym_diff[col], o_file)
 
-    #print(df)
-    #print(df.describe())
+    ### 階差系列の自己相関係数 ###
+    o_file = '%s/diff-acf-%s.png' % (o_dir, col)
+    print('ACF', o_file)
+    show_acf(ym_diff[col], o_file)
+
+    ### ADF検定 ###
+    col = '安値'
+    adf_test(ym_df[col])
+
+    ### パラメータ推定関数 ###
+    res_selection = sm.tsa.arma_order_select_ic(ym_diff[col], ic='aic', trend='c')
+    print(res_selection)
+
+
+def show_hist(ser, h_file):
+
+    plt.hist(ser, bins=100)
+    plt.savefig(h_file)
+    plt.close()
+    
+    l_file = os.path.splitext(h_file)[0] + '-log.png'
+    ser_log = np.log10(ser)
+    plt.hist(ser_log, bins=100)
+    plt.savefig(l_file)
 
 
 def show_trend_season(ser, o_file):
@@ -83,15 +121,19 @@ def show_acf(ser, o_file):
 
     #end_acf = sm.tsa.stattools.acf(ser, nlags=40)
     fig = plt.figure(figsize=(12,4))
-    ax1 = fig.add_subplot(111)
+    ax1 = fig.add_subplot(211)
     sm.graphics.tsa.plot_acf(ser, lags=40, ax=ax1)
+    ax2 = fig.add_subplot(212)
+    sm.graphics.tsa.plot_pacf(ser, lags=40, ax=ax2)
+    plt.subplots_adjust(hspace=0.5)
+
     plt.savefig(o_file)
-    plt.close()
     #plt.show()
+    plt.close()
     return
 
 
-def show_org_diff(org_ser, diff_ser):
+def show_org_diff(org_ser, diff_ser, o_file):
 
     plt.figure(figsize=(8,5))
     org_ser.index = pd.to_datetime(org_ser.index)
@@ -102,7 +144,26 @@ def show_org_diff(org_ser, diff_ser):
     plt.subplot(2,1,2)
     plt.plot(diff_ser.index, diff_ser.values)
     plt.ylabel('DIFFERENCE')
-    plt.show()
+    plt.savefig(o_file)
+    #plt.show()
+    plt.close()
+
+
+def adf_test(df):
+    """
+ADF検定
+    """
+    print('ADF Test: p-Value')
+    res_ctt = sm.tsa.stattools.adfuller(df, regression="ctt")   # トレンド項あり（２次）、定数項あり
+    res_ct  = sm.tsa.stattools.adfuller(df, regression="ct")   # トレンド項あり（１次、定数項あり
+    res_c   = sm.tsa.stattools.adfuller(df, regression="c")   # トレンド項なし、定数項あり
+    res_n   = sm.tsa.stattools.adfuller(df, regression="n")   # トレンド項なし、定数項なし
+    
+    print('ctt', '%0.4f' % res_ctt[1])
+    print('ct ', '%0.4f' % res_ct[1])
+    print('c  ', '%0.4f' % res_c[1])
+    print('n  ', '%0.4f' % res_n[1])
+    #print(res_ct)
 
 
 def convert_to_float(df):
@@ -142,4 +203,4 @@ def percent2value(s):
 if __name__ == '__main__':
 
     i_file = '../assignment-main/Trainee/time-series-prediction/stock_price.csv'
-    summarize(i_file)
+    main(i_file)
