@@ -11,76 +11,6 @@ import statsmodels.api as sm
 import os
 import pickle
 
-def main(i_file):
-
-    o_dir = 'fig'
-    df = pd.read_csv(i_file)
-
-    ### 出来高、変化率をFloatに変換 ###
-    df = convert_to_float(df)
-
-    ### 欠損値の確認 ###
-    print(df.isnull().sum(axis=0))
-
-    ### 頻度分布の確認 ###
-    col = '安値'
-    h_file = '%s/hist-%s.png' % (o_dir, col)
-    show_hist(df[col], h_file)
-
-    ### 月別データに変換 ###
-    df['日付け'] = pd.to_datetime(df['日付け'])
-    df['ym_dt'] = list(map(lambda dt: datetime.date(dt.year, dt.month, 1), df['日付け']))
-    ym_df = df.groupby('ym_dt').mean()
-    print(ym_df)
-    ym_file = 'year_month.pkl'
-    print('YEAR-MONTH DATA', ym_file)
-    with open(ym_file, 'wb') as ym_handle:
-        pickle.dump(ym_df, ym_handle)
-
-    ### トレンド、季節性の確認 ###
-    if not os.path.isdir(o_dir):
-        os.mkdir(o_dir)
-    for col in ['始値', '終値', '安値', '高値']: 
-        o_file = '%s/decompose-%s.png' % (o_dir, col)
-        print('OUTPUT', o_file)
-        show_trend_season(ym_df[col], o_file)
-
-    col = '安値'
-    ### 自己相関係数の確認 ###
-    o_file = '%s/acf-%s.png' % (o_dir, col)
-    print('ACF', o_file)
-    show_acf(ym_df[col], o_file)
-
-    ### 階差系列 ###
-    ym_diff = (ym_df - ym_df.shift()).dropna()
-    print(ym_diff)
-    ym_diff_file = 'year_month_diff.pkl'
-    with open(ym_diff_file, 'wb') as d_handle:
-        pickle.dump(ym_diff, d_handle)
-    o_file = '%s/diff-decomp-%s.png' % (o_dir, col)
-    show_trend_season(ym_diff[col], o_file)
-
-    ### 12ずらした階差系列 ##
-    ym_diff12 = (ym_df - ym_df.shift(12)).dropna()
-    o_file = '%s/diff12-asf-%s.png' % (o_dir, col)
-    show_trend_season(ym_diff12[col], o_file)
-
-    ### 原系列と階差系列の比較表示 ###
-    o_file = '%s/comp-org-diff-%s.png' % (o_dir, col)
-    show_org_diff(ym_df[col], ym_diff[col], o_file)
-
-    ### 階差系列の自己相関係数 ###
-    o_file = '%s/diff-acf-%s.png' % (o_dir, col)
-    print('ACF', o_file)
-    show_acf(ym_diff[col], o_file)
-
-    ### ADF検定 ###
-    col = '安値'
-    adf_test(ym_df[col])
-
-    ### パラメータ推定関数 ###
-    res_selection = sm.tsa.arma_order_select_ic(ym_diff[col], ic='aic', trend='c')
-    print(res_selection)
 
 
 def show_hist(ser, h_file):
@@ -128,7 +58,6 @@ def show_acf(ser, o_file):
     plt.subplots_adjust(hspace=0.5)
 
     plt.savefig(o_file)
-    #plt.show()
     plt.close()
     return
 
@@ -145,7 +74,6 @@ def show_org_diff(org_ser, diff_ser, o_file):
     plt.plot(diff_ser.index, diff_ser.values)
     plt.ylabel('DIFFERENCE')
     plt.savefig(o_file)
-    #plt.show()
     plt.close()
 
 
@@ -163,19 +91,18 @@ ADF検定
     print('ct ', '%0.4f' % res_ct[1])
     print('c  ', '%0.4f' % res_c[1])
     print('n  ', '%0.4f' % res_n[1])
-    #print(res_ct)
 
 
 def convert_to_float(df):
 
     ### 出来高 ###
-    vol = np.array(list(map(to_volume, df['出来高'])))
-    print('vol', vol)
-    print('vol', type(vol))
+    vol = np.array(list(map(to_volume, df['出来高'])),
+        dtype=np.float32)
     df['出来高'] = vol
 
     ### 変化率 ###
-    change = np.array(list(map(percent2value, df['変化率 %'])))
+    change = np.array(list(map(percent2value, df['変化率 %'])),
+        dtype=np.float32)
     print('change', type(change))
     df['変化率 %'] = change
     return df
@@ -203,4 +130,73 @@ def percent2value(s):
 if __name__ == '__main__':
 
     i_file = '../assignment-main/Trainee/time-series-prediction/stock_price.csv'
-    main(i_file)
+    o_dir = 'fig'
+    df = pd.read_csv(i_file,
+        dtype={'日付け':'object',
+            '終値':'float32', '始値':'float32', '高値':'float32', '安値':'float32',
+            '出来高':'object', '変化率 %':'object'})
+
+    ### 出来高、変化率をFloatに変換 ###
+    df = convert_to_float(df)
+
+    ### 欠損値の確認 ###
+    print('欠損値')
+    print(df.isnull().sum(axis=0))
+
+    ### 頻度分布の確認 ###
+    col = '安値'
+    h_file = '%s/hist-%s.png' % (o_dir, col)
+    show_hist(df[col], h_file)
+
+    ### 月別データに変換 ###
+    df['日付け'] = pd.to_datetime(df['日付け'])
+    df['ym_dt'] = list(map(lambda dt: datetime.date(dt.year, dt.month, 1), df['日付け']))
+    ym_df = df.groupby('ym_dt').mean()
+    #ym_file = 'year_month.pkl'
+    ym_file = 'year_month.csv'
+    print('YEAR-MONTH DATA', ym_file)
+    ym_df = ym_df.drop(columns='日付け')    # 月内の日付けの平均値は不要
+    ym_df.to_csv(ym_file)
+
+    ### トレンド、季節性の確認 ###
+    if not os.path.isdir(o_dir):
+        os.mkdir(o_dir)
+    for col in ['始値', '終値', '安値', '高値']: 
+        o_file = '%s/decompose-%s.png' % (o_dir, col)
+        print('OUTPUT', o_file)
+        show_trend_season(ym_df[col], o_file)
+
+    col = '安値'
+    ### 自己相関係数の確認 ###
+    o_file = '%s/acf-%s.png' % (o_dir, col)
+    print('ACF', o_file)
+    show_acf(ym_df[col], o_file)
+
+    ### 階差系列 ###
+    ym_diff = (ym_df - ym_df.shift()).dropna()
+    ym_diff_file = 'year_month_diff.csv'
+    ym_diff.to_csv(ym_diff_file)
+    o_file = '%s/diff-decomp-%s.png' % (o_dir, col)
+    show_trend_season(ym_diff[col], o_file)
+
+    ### 12ずらした階差系列 ##
+    ym_diff12 = (ym_df - ym_df.shift(12)).dropna()
+    o_file = '%s/diff12-asf-%s.png' % (o_dir, col)
+    show_trend_season(ym_diff12[col], o_file)
+
+    ### 原系列と階差系列の比較表示 ###
+    o_file = '%s/comp-org-diff-%s.png' % (o_dir, col)
+    show_org_diff(ym_df[col], ym_diff[col], o_file)
+
+    ### 階差系列の自己相関係数 ###
+    o_file = '%s/diff-acf-%s.png' % (o_dir, col)
+    print('ACF', o_file)
+    show_acf(ym_diff[col], o_file)
+
+    ### ADF検定 ###
+    col = '安値'
+    adf_test(ym_df[col])
+
+    ### パラメータ推定関数 ###
+    res_selection = sm.tsa.arma_order_select_ic(ym_diff[col], ic='aic', trend='c')
+    print(res_selection)
