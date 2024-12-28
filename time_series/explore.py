@@ -77,6 +77,7 @@ def show_org_diff(org_ser, diff_ser, o_file):
     plt.close()
 
 
+'''
 def adf_test(df):
     """
 ADF検定
@@ -91,7 +92,7 @@ ADF検定
     print('ct ', '%0.4f' % res_ct[1])
     print('c  ', '%0.4f' % res_c[1])
     print('n  ', '%0.4f' % res_n[1])
-
+'''
 
 def convert_to_float(df):
 
@@ -193,10 +194,11 @@ if __name__ == '__main__':
     print('ACF', o_file)
     show_acf(ym_diff[col], o_file)
 
-    ### ADF検定 ###
-    col = '安値'
-    adf_test(ym_df[col])
-
+    """
     ### パラメータ推定関数 ###
-    res_selection = sm.tsa.arma_order_select_ic(ym_diff[col], ic='aic', trend='c')
+    res_selection = sm.tsa.arma_order_select_ic(ym_diff[col],
+        ic='aic', trend='c', max_ar=8, max_ma=4)
+    #    start_params=ym_diff[col].mean())
     print(res_selection)
+    print('mle_retvals', res_selection.mle_retvals)
+    """

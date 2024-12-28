@@ -5,34 +5,55 @@
 import pickle
 import statsmodels.api as sm
 import matplotlib.pyplot as plt
+import pandas as pd
 import numpy as np
 
-def predict_sarima(ser):
+def adf_test(df):
+    """
+ADF検定
+    """
+    print('ADF Test: p-Value')
+    res_ctt = sm.tsa.stattools.adfuller(df, regression="ctt")   # トレンド項あり（２次）、定数項あり
+    res_ct  = sm.tsa.stattools.adfuller(df, regression="ct")    # トレンド項あり(１次、定数項あり)
+    res_c   = sm.tsa.stattools.adfuller(df, regression="c")     # トレンド項なし、定数項あり
+    res_n   = sm.tsa.stattools.adfuller(df, regression="n")     # トレンド項なし、定数項なし
 
-    print(ser)
-    from sklearn.preprocessing import StandardScaler
-    scaler = StandardScaler()
-    ser_scaled = scaler.fit_transform(ser.values.reshape(1,-1)).flatten()
+    print('ctt', '%0.4f' % res_ctt[1])
+    print('ct ', '%0.4f' % res_ct[1])
+    print('c  ', '%0.4f' % res_c[1])
+    print('n  ', '%0.4f' % res_n[1])
+
+
+def fit_sarima(ser, is_seasonal=False):
+
+    if is_seasonal:    # With seasonal modelling
+        seasonal_order=(1,1,1,12)
+    else:           # Without seasonal modelling
+        seasonal_order=(0,0,0,0)
 
     sarimax = sm.tsa.SARIMAX(ser,
-    #sarimax = sm.tsa.SARIMAX(ser_scaled,
-        #order=(6,2,1),
-        #order=(5,2,1),
-        order=(4,2,1),
-        #order=(3,2,1),
-        #order=(2,2,1),
-        #seasonal_order=(1,1,1,12),
-        seasonal_order=(0,0,0,0),
+        order=(2,3,1),
+        seasonal_order=seasonal_order,
         enforce_stationarity    = False,
-        enforce_invertibility   = False,
-        )
-    result = sarimax.fit(maxiter=1000)
-    #print('モデルの残差成分')
-    #print(result.resid)
-    print('AIC', result.aic)
-    #print(result.mle_retvals)
+        enforce_invertibility   = False)
+    model = sarimax.fit(maxiter=1000)
+    print('AIC', model.aic)
 
-    return result
+    return model
+
+
+def show_prediction(ser, pred, o_file):
+
+    plt.figure(figsize=(8,4))
+    plt.plot(ser.index, ser.values, label='original')
+    plt.plot(pred.index, pred.values, label='predicted')
+    plt.savefig(o_file)
+
+
+def evaluate(test, pred):
+
+    wape = (test - pred).abs().sum() / test.sum()
+    return wape
 
 
 def check_result(res, o_file):
@@ -51,7 +72,6 @@ def check_result(res, o_file):
     plt.subplots_adjust(hspace=0.5)
 
     # 残差の自己相関 #
-    #from statsmodels.graphics.tsaplots import plot_acf
     plt.savefig(o_file)
     plt.close()
 
@@ -59,25 +79,59 @@ def check_result(res, o_file):
 if __name__ == '__main__':
 
     o_dir = 'fig'
-    ### 原系列データ ###
-    i_file = 'year_month.pkl'
-    with open(i_file, 'rb') as i_handle:
-        df = pickle.load(i_handle)
-    print(df)
-
     ### 階差データ ###
-    d_file = 'year_month_diff.pkl'
-    with open(d_file, 'rb') as d_handle:
-        df_diff = pickle.load(d_handle)
+    d_file = 'year_month_diff.csv'
+    df_diff = pd.read_csv(d_file,
+        index_col=0,
+        dtype={'ym_dt':'object',
+            '終値':'float32', '始値':'float32',
+            '高値':'float32', '安値':'float32',
+            '出来高':'float32', '変化率 %':'float32'})
+    df_diff.index = pd.to_datetime(df_diff.index)
+
+    print(df_diff.dtypes)
+    print(df_diff)
+    col = '安値'
+    ser = df_diff[col]     # 階差系列データを使用
 
     ### ADF検定 ###
+    from statsmodels.tools.sm_exceptions import ConvergenceWarning
+    print('階差系列でのADF検定')
+    #ser = ser/100
+    adf_test(ser)
 
-    col = '安値'
-    res = predict_sarima(df[col])
-    #res = predict_sarima(np.log10(df[col]))
-    #res = predict_sarima(df_diff[col])
+    ### パラメータ推定関数 ###
+    res_selection = sm.tsa.arma_order_select_ic(ser,
+        ic='aic', trend='c', max_ar=3, max_ma=3)
+    print(res_selection.aic_min_order)
 
-    r_file = '%s/residual-acf-%s' % (o_dir, col)
-    print('ACF', r_file)
-    check_result(res, r_file)
+    ### 訓練と評価データに分割 ###
+    n = 56
+    train, test = ser[:-n], ser[-n:]
+    print('train', len(train), 'test', len(test))
+
+    ### 季節性なしSARIMA ###
+    model = fit_sarima(train, is_seasonal=False)
+    pred = model.predict('2019-12-01', '2024-08-01')
+    p_file = '%s/show_prediction-%s-noseasonal.png' % (o_dir, col)
+    print('季節性なし予測結果表示', p_file)
+    r_file = '%s/residual-acf-%s-noseasonal.png' % (o_dir, col)
+    print('季節性なしACF', r_file)
+    show_prediction(ser, pred, p_file)
+    print('季節性なしWAPE', evaluate(test, pred[1:]))
+
+    ### 季節性ありSARIMA ###
+    model = fit_sarima(train, is_seasonal=True)
+    pred = model.predict('2019-12-01', '2024-08-01')
+    p_file = '%s/show_prediction-%s-seasonal.png' % (o_dir, col)
+    print('季節性あり予測結果表示', p_file)
+    r_file = '%s/residual-acf-%s-seasonal.png' % (o_dir, col)
+    print('季節性ありACF', r_file)
+    show_prediction(ser, pred, p_file)
+
+    ### 評価 ###
+    #pred = pred[1:]     # 最初のオーバーラップ点を除去する
+    print('季節性ありWAPE', evaluate(test, pred[1:]))
+
+    check_result(model, r_file)
 
