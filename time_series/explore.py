@@ -132,6 +132,8 @@ if __name__ == '__main__':
 
     i_file = '../assignment-main/Trainee/time-series-prediction/stock_price.csv'
     o_dir = 'fig'
+    col = '安値'
+
     df = pd.read_csv(i_file,
         dtype={'日付け':'object',
             '終値':'float32', '始値':'float32', '高値':'float32', '安値':'float32',
@@ -145,7 +147,6 @@ if __name__ == '__main__':
     print(df.isnull().sum(axis=0))
 
     ### 頻度分布の確認 ###
-    col = '安値'
     h_file = '%s/hist-%s.png' % (o_dir, col)
     show_hist(df[col], h_file)
 
@@ -166,7 +167,6 @@ if __name__ == '__main__':
         print('OUTPUT', o_file)
         show_trend_season(ym_df[col], o_file)
 
-    col = '安値'
     ### 自己相関係数の確認 ###
     o_file = '%s/acf-%s.png' % (o_dir, col)
     print('ACF', o_file)
