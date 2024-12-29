@@ -59,7 +59,7 @@ def evaluate(test, pred):
     return wape
 
 
-def show_org(ser, pred):
+def show_org(ser, pred, o_file):
 
     last_id = pred.index[0]
     prev = ser[last_id]
@@ -76,8 +76,8 @@ def show_org(ser, pred):
     plt.figure(figsize=(8,4))
     plt.plot(ser.index, ser.values, label='original')
     plt.plot(org_pred.index, org_pred.values, label='predicted')
-    #plt.savefig(o_file)
-    plt.show()
+    plt.savefig(o_file)
+    plt.close()
 
 
 def check_result(res, o_file):
@@ -170,7 +170,8 @@ if __name__ == '__main__':
     print('季節性ありWAPE', evaluate(test, pred[1:]))
 
     ### 原系列と予測を表示
-    show_org(df[col], pred)
+    g_file = '%s/show_orig_pred-%s' % (o_dir, col)
+    show_org(df[col], pred, g_file)
 
     check_result(model, r_file)
 
