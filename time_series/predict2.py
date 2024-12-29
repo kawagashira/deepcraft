@@ -1,106 +1,10 @@
 #!/usr/bin/env python
 #
-#                           predict.py
+#                           predict2.py
 #
-import pickle
-import statsmodels.api as sm
-import matplotlib.pyplot as plt
+
 import pandas as pd
-import numpy as np
-
-'''
-def adf_test(df):
-    """
-ADF検定
-    """
-    print('ADF Test: p-Value')
-    res_ctt = sm.tsa.stattools.adfuller(df, regression="ctt")   # トレンド項あり（２次）、定数項あり
-    res_ct  = sm.tsa.stattools.adfuller(df, regression="ct")    # トレンド項あり(１次、定数項あり)
-    res_c   = sm.tsa.stattools.adfuller(df, regression="c")     # トレンド項なし、定数項あり
-    res_n   = sm.tsa.stattools.adfuller(df, regression="n")     # トレンド項なし、定数項なし
-
-    print('ctt', '%0.4f' % res_ctt[1])
-    print('ct ', '%0.4f' % res_ct[1])
-    print('c  ', '%0.4f' % res_c[1])
-    print('n  ', '%0.4f' % res_n[1])
-
-
-def fit_sarima(ser, is_seasonal=False):
-
-    if is_seasonal:    # With seasonal modelling
-        seasonal_order=(1,1,1,12)
-    else:           # Without seasonal modelling
-        seasonal_order=(0,0,0,0)
-
-    sarimax = sm.tsa.SARIMAX(ser,
-        order=(2,2,1),
-        #order=(2,1,1),
-        #order=(1,1,1),
-        seasonal_order=seasonal_order,
-        enforce_stationarity    = False,
-        enforce_invertibility   = False)
-    model = sarimax.fit(maxiter=1000)
-    print('AIC', model.aic)
-
-    return model
-
-
-def show_prediction(ser, pred, o_file):
-
-    plt.figure(figsize=(8,4))
-    plt.plot(ser.index, ser.values, label='original')
-    plt.plot(pred.index, pred.values, label='predicted')
-    plt.savefig(o_file)
-    plt.close()
-
-
-def evaluate(test, pred):
-
-    wape = (test - pred).abs().sum() / test.sum()
-    return wape
-
-
-def show_org(ser, pred, o_file):
-
-    last_id = pred.index[0]
-    prev = ser[last_id]
-    id_w, w = [], []
-    for id, diff in pred[1:].items():
-        integral = diff + prev 
-        id_w.append(id)
-        w.append(integral)
-        prev = integral
-    org_pred = pd.Series(w)
-    org_pred.index = id_w
-
-    ### SHOW ORGINAL DATA AND ITS PREDICTED VALUES ###
-    plt.figure(figsize=(8,4))
-    plt.plot(ser.index, ser.values, label='original')
-    plt.plot(org_pred.index, org_pred.values, label='predicted')
-    plt.savefig(o_file)
-    plt.close()
-
-
-def check_result(res, o_file):
-
-    residuals = res.resid
-
-    fig = plt.figure(figsize=(12,4))
-
-    # 残差をプロット #
-    ax1 = fig.add_subplot(211)
-    ax1.plot(residuals)
-    ax1.set_title('Residuals')
-    ax2 = fig.add_subplot(212)
-    sm.graphics.tsa.plot_pacf(residuals, lags=40, ax=ax2)
-    ax2.set_title('Autocorrelation of Residuals')
-    plt.subplots_adjust(hspace=0.5)
-
-    # 残差の自己相関 #
-    plt.savefig(o_file)
-    plt.close()
-
-'''
+import statsmodels.api as sm
 
 if __name__ == '__main__':
 
