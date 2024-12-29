@@ -146,6 +146,9 @@ if __name__ == '__main__':
     print('欠損値')
     print(df.isnull().sum(axis=0))
 
+    ### 重心 ###
+    df['重心'] = (df['終値'] + df['始値'] + df['高値'] + df['安値'])/4
+
     ### 頻度分布の確認 ###
     h_file = '%s/hist-%s.png' % (o_dir, col)
     show_hist(df[col], h_file)
@@ -162,8 +165,8 @@ if __name__ == '__main__':
     ### トレンド、季節性の確認 ###
     if not os.path.isdir(o_dir):
         os.mkdir(o_dir)
-    for col in ['始値', '終値', '安値', '高値']: 
-        o_file = '%s/decompose-%s.png' % (o_dir, col)
+    for c in ['始値', '終値', '安値', '高値', '重心']: 
+        o_file = '%s/decompose-%s.png' % (o_dir, c)
         print('OUTPUT', o_file)
         show_trend_season(ym_df[col], o_file)
 
