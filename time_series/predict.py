@@ -32,7 +32,9 @@ def fit_sarima(ser, is_seasonal=False):
         seasonal_order=(0,0,0,0)
 
     sarimax = sm.tsa.SARIMAX(ser,
-        order=(2,3,1),
+        order=(2,2,1),
+        #order=(2,1,1),
+        #order=(1,1,1),
         seasonal_order=seasonal_order,
         enforce_stationarity    = False,
         enforce_invertibility   = False)
@@ -48,12 +50,34 @@ def show_prediction(ser, pred, o_file):
     plt.plot(ser.index, ser.values, label='original')
     plt.plot(pred.index, pred.values, label='predicted')
     plt.savefig(o_file)
+    plt.close()
 
 
 def evaluate(test, pred):
 
     wape = (test - pred).abs().sum() / test.sum()
     return wape
+
+
+def show_org(ser, pred):
+
+    last_id = pred.index[0]
+    prev = ser[last_id]
+    id_w, w = [], []
+    for id, diff in pred[1:].items():
+        integral = diff + prev 
+        id_w.append(id)
+        w.append(integral)
+        prev = integral
+    org_pred = pd.Series(w)
+    org_pred.index = id_w
+
+    ### SHOW ORGINAL DATA AND ITS PREDICTED VALUES ###
+    plt.figure(figsize=(8,4))
+    plt.plot(ser.index, ser.values, label='original')
+    plt.plot(org_pred.index, org_pred.values, label='predicted')
+    #plt.savefig(o_file)
+    plt.show()
 
 
 def check_result(res, o_file):
@@ -79,6 +103,17 @@ def check_result(res, o_file):
 if __name__ == '__main__':
 
     o_dir = 'fig'
+
+    ### 原系列データ ###
+    ym_file = 'year_month.csv'
+    df = pd.read_csv(ym_file,
+        index_col=0,
+        dtype={'ym_dt':'object',
+            '終値':'float32', '始値':'float32',
+            '高値':'float32', '安値':'float32',
+            '出来高':'float32', '変化率 %':'float32'})
+    df.index = pd.to_datetime(df.index)
+
     ### 階差データ ###
     d_file = 'year_month_diff.csv'
     df_diff = pd.read_csv(d_file,
@@ -113,6 +148,7 @@ if __name__ == '__main__':
     ### 季節性なしSARIMA ###
     model = fit_sarima(train, is_seasonal=False)
     pred = model.predict('2019-12-01', '2024-08-01')
+    print('pred.index', type(pred.index))
     p_file = '%s/show_prediction-%s-noseasonal.png' % (o_dir, col)
     print('季節性なし予測結果表示', p_file)
     r_file = '%s/residual-acf-%s-noseasonal.png' % (o_dir, col)
@@ -132,6 +168,9 @@ if __name__ == '__main__':
     ### 評価 ###
     #pred = pred[1:]     # 最初のオーバーラップ点を除去する
     print('季節性ありWAPE', evaluate(test, pred[1:]))
+
+    ### 原系列と予測を表示
+    show_org(df[col], pred)
 
     check_result(model, r_file)
 

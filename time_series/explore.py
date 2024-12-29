@@ -153,7 +153,6 @@ if __name__ == '__main__':
     df['日付け'] = pd.to_datetime(df['日付け'])
     df['ym_dt'] = list(map(lambda dt: datetime.date(dt.year, dt.month, 1), df['日付け']))
     ym_df = df.groupby('ym_dt').mean()
-    #ym_file = 'year_month.pkl'
     ym_file = 'year_month.csv'
     print('YEAR-MONTH DATA', ym_file)
     ym_df = ym_df.drop(columns='日付け')    # 月内の日付けの平均値は不要
