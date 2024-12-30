@@ -146,7 +146,13 @@ if __name__ == '__main__':
     print('欠損値')
     print(df.isnull().sum(axis=0))
 
+    ### 標準化 ###
+    scale = 300.0
+    for c in ['終値', '始値', '高値', '安値']:
+        df[c] = df[c] / scale
+
     ### 重心 ###
+    #df['安値'] = df['安値'] / 300      # 標準化
     df['重心'] = (df['終値'] + df['始値'] + df['高値'] + df['安値'])/4
 
     ### 頻度分布の確認 ###
@@ -195,12 +201,3 @@ if __name__ == '__main__':
     o_file = '%s/diff-acf-%s.png' % (o_dir, col)
     print('ACF', o_file)
     show_acf(ym_diff[col], o_file)
-
-    """
-    ### パラメータ推定関数 ###
-    res_selection = sm.tsa.arma_order_select_ic(ym_diff[col],
-        ic='aic', trend='c', max_ar=8, max_ma=4)
-    #    start_params=ym_diff[col].mean())
-    print(res_selection)
-    print('mle_retvals', res_selection.mle_retvals)
-    """

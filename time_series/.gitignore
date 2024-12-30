@@ -1,5 +1,7 @@
 fig
 fig2
+fig.*
+fig2.*
 *.pkl
 *.csv
 __pycache__
