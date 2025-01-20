@@ -55,7 +55,8 @@ def show_prediction(ser, pred, o_file):
 
 def evaluate(test, pred):
 
-    wape = (test - pred).abs().sum() / test.sum()
+    #wape = (test - pred).abs().sum() / test.sum()
+    wape = (test - pred).abs().sum() / test.abs().sum() * 100
     return wape
 
 
